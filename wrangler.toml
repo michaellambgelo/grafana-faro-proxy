@@ -1,3 +1,21 @@
 name = "grafana-faro-proxy"
 main = "worker.js"
-compatibility_date = "2025-08-08"
+compatibility_date = "2024-01-15"
+
+[env.production.vars]
+GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
+ALLOWED_ORIGINS = "https://michaellamb.dev,http://localhost:4000,http://127.0.0.1:4000"
+
+[env.production.secrets]
+BLOG_INGEST_TOKEN
+LETTERBOXD_INGEST_TOKEN
+
+# Development environment (optional)
+[env.development.vars]
+GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"  
+ALLOWED_ORIGINS = "http://localhost:4000,http://127.0.0.1:4000"
+
+# Routes configuration
+[[routes]]
+pattern = "michaellamb.dev/faro-proxy/*"
+zone_name = "michaellamb.dev"

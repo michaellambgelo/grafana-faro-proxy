@@ -67,6 +67,8 @@ initializeFaro({
 
 ## Deployment
 
+### Manual Deployment
+
 This worker is designed to be deployed on Cloudflare Workers. Follow these steps:
 
 1. Create a new Cloudflare Worker in your Cloudflare dashboard
@@ -74,6 +76,20 @@ This worker is designed to be deployed on Cloudflare Workers. Follow these steps
 3. Configure the required environment variables
 4. Deploy the worker
 5. Set up a route in your Cloudflare dashboard to direct traffic to this worker
+
+### GitHub Actions Deployment
+
+This repository includes a GitHub Actions workflow for automatic deployment. To set it up:
+
+1. In your GitHub repository, go to Settings > Secrets and variables > Actions
+2. Add the following secrets:
+   - `CF_API_TOKEN`: Your Cloudflare API token with Workers deployment permissions
+   - `BLOG_INGEST_TOKEN`: Your Grafana Faro ingest token for the blog application
+   - `LETTERBOXD_INGEST_TOKEN`: Your Grafana Faro ingest token for the letterboxd viewer
+
+3. Push to the main branch or manually trigger the workflow to deploy
+
+The workflow will automatically deploy your worker to Cloudflare using the environment variables and secrets configured in GitHub.
 
 ## License
 
