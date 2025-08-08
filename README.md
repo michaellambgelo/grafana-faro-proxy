@@ -70,7 +70,7 @@ initializeFaro({
 This worker is designed to be deployed on Cloudflare Workers. Follow these steps:
 
 1. Create a new Cloudflare Worker in your Cloudflare dashboard
-2. Copy the contents of `worker.js` into the worker editor
+2. Import this GitHub repository (or a forked version that meets your needs) 
 3. Configure the required environment variables
 4. Deploy the worker
 5. Set up a route in your Cloudflare dashboard to direct traffic to this worker
