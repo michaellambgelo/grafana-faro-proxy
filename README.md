@@ -30,7 +30,7 @@ The worker requires the following environment variables to be set in the Cloudfl
 | Variable | Description | Example |
 |----------|-------------|--------|
 | `GRAFANA_COLLECTOR_HOST` | Grafana Faro collector hostname | `faro-collector-prod-us-east-0.grafana.net` |
-| `BLOG_INGEST_TOKEN` | Ingest token for blog application | `1fe18205219b65b8844f34747e1986fa` |
+| `BLOG_INGEST_TOKEN` | Ingest token for blog application | `your-blog-token-here` |
 | `LETTERBOXD_INGEST_TOKEN` | Ingest token for letterboxd viewer application | `your-letterboxd-token-here` |
 | `ALLOWED_ORIGINS` | Comma-separated list of allowed origins | `https://michaellamb.dev,http://localhost:3000` |
 
