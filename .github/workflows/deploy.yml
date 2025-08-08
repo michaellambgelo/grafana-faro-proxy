@@ -14,13 +14,16 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
+      - name: Set Cloudflare Secrets
+        run: |
+          echo "Adding secrets..."
+          echo "${{ secrets.BLOG_INGEST_TOKEN }}" | npx wrangler secret put BLOG_INGEST_TOKEN --env production
+          echo "${{ secrets.LETTERBOXD_INGEST_TOKEN }}" | npx wrangler secret put LETTERBOXD_INGEST_TOKEN --env production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          
       - name: Publish to Cloudflare
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           environment: production
-          # Using wrangler v3 format for secrets
-          preCommands: |
-            echo "Adding secrets..."
-            npx wrangler secret put BLOG_INGEST_TOKEN --env production <<< "${{ secrets.BLOG_INGEST_TOKEN }}"
-            npx wrangler secret put LETTERBOXD_INGEST_TOKEN --env production <<< "${{ secrets.LETTERBOXD_INGEST_TOKEN }}"
