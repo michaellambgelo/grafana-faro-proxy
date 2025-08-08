@@ -3,12 +3,6 @@
  * Proxies requests from michaellamb.dev to Grafana Cloud
  */
 
-// Environment variables to configure in Cloudflare Workers dashboard:
-// GRAFANA_COLLECTOR_HOST = faro-collector-prod-us-east-0.grafana.net
-// BLOG_INGEST_TOKEN = 1fe18205219b65b8844f34747e1986fa
-// LETTERBOXD_INGEST_TOKEN = your-letterboxd-token-here
-// ALLOWED_ORIGINS = https://michaellamb.dev,http://localhost:3000,http://127.0.0.1:3000
-
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
