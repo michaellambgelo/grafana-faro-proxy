@@ -15,3 +15,4 @@ ALLOWED_ORIGINS = "http://localhost:4000,http://127.0.0.1:4000"
 [[routes]]
 pattern = "michaellamb.dev/faro-proxy/*"
 zone_name = "michaellamb.dev"
+methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
