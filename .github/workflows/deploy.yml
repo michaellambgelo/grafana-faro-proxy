@@ -17,16 +17,14 @@ jobs:
       # We'll set secrets directly in Cloudflare dashboard
       # and use wrangler only for deployment
           
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Publish to Cloudflare
+        uses: cloudflare/wrangler-action@v3.1.0
         with:
-          node-version: '20'
-      
-      - name: Install Wrangler
-        run: npm install -g wrangler@latest
-      
-      - name: Deploy with Wrangler
-        run: wrangler deploy --env production
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          preCommands: |
+            echo "Checking Wrangler version"
+            wrangler --version
+            echo "Checking environment"
+            env | grep CLOUDFLARE
+          command: publish --env production
