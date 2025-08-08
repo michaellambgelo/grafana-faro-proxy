@@ -6,9 +6,8 @@ compatibility_date = "2024-01-15"
 GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
 ALLOWED_ORIGINS = "https://michaellamb.dev,http://localhost:4000,http://127.0.0.1:4000"
 
-[env.production.secrets]
-BLOG_INGEST_TOKEN
-LETTERBOXD_INGEST_TOKEN
+# Secrets are set via wrangler CLI or dashboard
+# Do not define them here
 
 # Development environment (optional)
 [env.development.vars]
