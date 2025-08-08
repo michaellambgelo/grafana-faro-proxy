@@ -25,7 +25,4 @@ jobs:
           preCommands: |
             echo "Checking Wrangler version"
             wrangler --version
-            echo "Setting up authentication"
-            echo "CLOUDFLARE_API_TOKEN=${{ secrets.CF_API_TOKEN }}" > .env
-            echo "CLOUDFLARE_ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}" >> .env
-          command: publish
+          command: deploy
