@@ -38,8 +38,7 @@ function isValidOrigin(origin, allowedOrigins) {
 function getIngestTokenForApp(appName, env) {
   const tokenMap = {
     'blog': env.BLOG_INGEST_TOKEN,
-    'letterboxd-viewer': env.LETTERBOXD_INGEST_TOKEN,
-    'letterboxd': env.LETTERBOXD_INGEST_TOKEN, // alias
+    'letterboxd-viewer': env.LETTERBOXD_INGEST_TOKEN
   };
   
   return tokenMap[appName] || env.BLOG_INGEST_TOKEN; // default to blog token
@@ -57,7 +56,7 @@ function detectAppFromRequest(request) {
   
   // Method 2: Detect from referer header
   if (referer) {
-    if (referer.includes('/letterboxd-viewer/') || referer.includes('/letterboxd/')) {
+    if (referer.includes('/letterboxd-viewer/')) {
       return 'letterboxd-viewer';
     }
     // Default to blog for main site
