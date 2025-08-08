@@ -91,6 +91,78 @@ This repository includes a GitHub Actions workflow for automatic deployment. To 
 
 The workflow will automatically deploy your worker to Cloudflare using the environment variables and secrets configured in GitHub.
 
+# Setting Up Local Development for Grafana Faro Proxy
+
+This guide explains how to set up a local development environment for the Grafana Faro proxy to avoid CORS issues when developing locally.
+
+## Prerequisites
+
+1. Node.js and npm installed
+2. Wrangler CLI (Cloudflare Workers development tool)
+
+## Setup Instructions
+
+### 1. Install Wrangler
+
+```bash
+npm install -g wrangler
+```
+
+### 2. Clone your Grafana Faro Proxy repository
+
+```bash
+git clone https://github.com/michaellambgelo/grafana-faro-proxy.git
+cd grafana-faro-proxy
+```
+
+### 3. Create a wrangler.toml file (if not already present)
+
+Create a `wrangler.toml` file in the root of your project with the following content:
+
+```toml
+name = "grafana-faro-proxy"
+main = "worker.js"
+compatibility_date = "2023-01-01"
+
+[vars]
+GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
+ALLOWED_ORIGINS = "*"
+```
+
+Create a file in the root directory of the Cloudflare Worker named `.dev.vars` with this template:
+
+```toml
+BLOG_INGEST_TOKEN = "your-development-ingest-token"
+LETTERBOXD_INGEST_TOKEN = "your-development-ingest-token"
+```
+
+Replace the ingest tokens with development tokens or dummy values for local testing.
+
+### 4. Run the worker locally
+
+```bash
+wrangler dev --local
+```
+
+This will start your worker on `http://localhost:8787`.
+
+### 5. Test with local setup
+
+#### Prerequisite: a blog application served from localhost:4000
+
+With your Jekyll site running on `localhost:4000` and your Cloudflare Worker running on `localhost:8787`, your site should now be able to send telemetry data.
+
+## Production Deployment
+
+When you're ready to deploy changes to your Cloudflare Worker:
+
+```bash
+wrangler publish
+```
+
+Remember to keep your production ingest tokens secure and never commit them to version control.
+
+
 ## License
 
 See the [LICENSE](LICENSE) file for details.
