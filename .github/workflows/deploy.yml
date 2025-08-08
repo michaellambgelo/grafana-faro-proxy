@@ -19,6 +19,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           environment: production
-          secrets: |
-            BLOG_INGEST_TOKEN=${{ secrets.BLOG_INGEST_TOKEN }}
-            LETTERBOXD_INGEST_TOKEN=${{ secrets.LETTERBOXD_INGEST_TOKEN }}
+          # Using wrangler v3 format for secrets
+          preCommands: |
+            echo "Adding secrets..."
+            npx wrangler secret put BLOG_INGEST_TOKEN --env production <<< "${{ secrets.BLOG_INGEST_TOKEN }}"
+            npx wrangler secret put LETTERBOXD_INGEST_TOKEN --env production <<< "${{ secrets.LETTERBOXD_INGEST_TOKEN }}"
