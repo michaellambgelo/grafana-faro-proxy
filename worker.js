@@ -3,12 +3,34 @@
  * Proxies requests from michaellamb.dev to Grafana Cloud
  */
 
+// Default CORS headers with wildcard origin
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, x-faro-session-id',
   'Access-Control-Max-Age': '86400',
 };
+
+// New function to generate proper CORS headers
+function getCorsHeaders(request) {
+  // Get the Origin header from the request
+  const origin = request.headers.get('Origin');
+  
+  // If there's an origin header and it's from localhost or your domains, use it
+  if (origin && (origin.includes('localhost') || 
+                 origin.includes('michaellamb.dev'))) {
+    return {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, x-faro-session-id',
+      'Access-Control-Max-Age': '86400',
+      'Vary': 'Origin', // Important when varying response based on Origin
+    };
+  }
+  
+  // Default CORS headers (wildcard)
+  return CORS_HEADERS;
+}
 
 // Bot detection patterns
 const BOT_USER_AGENTS = [
@@ -80,7 +102,7 @@ async function handleFaroProxy(request, env) {
     console.error(`No ingest token found for app: ${appName}`);
     return new Response('Configuration Error: No ingest token', { 
       status: 500,
-      headers: CORS_HEADERS 
+      headers: getCorsHeaders(request) 
     });
   }
   
@@ -91,7 +113,7 @@ async function handleFaroProxy(request, env) {
   if (allowedOrigins && !isValidOrigin(origin, allowedOrigins)) {
     return new Response('Forbidden: Invalid origin', { 
       status: 403,
-      headers: CORS_HEADERS 
+      headers: getCorsHeaders(request) 
     });
   }
 
@@ -101,7 +123,7 @@ async function handleFaroProxy(request, env) {
     console.log('Bot detected, blocking request:', userAgent);
     return new Response('Blocked: Bot detected', { 
       status: 403,
-      headers: CORS_HEADERS 
+      headers: getCorsHeaders(request) 
     });
   }
 
@@ -137,12 +159,23 @@ async function handleFaroProxy(request, env) {
     const response = await fetch(modifiedRequest);
     
     // Create the response with CORS headers
+    // First, get all the original headers except CORS headers
+    const responseHeaders = Object.fromEntries(response.headers.entries());
+    
+    // Remove any existing CORS headers to prevent duplicates
+    delete responseHeaders['access-control-allow-origin'];
+    delete responseHeaders['access-control-allow-methods'];
+    delete responseHeaders['access-control-allow-headers'];
+    delete responseHeaders['access-control-max-age'];
+    delete responseHeaders['vary'];
+    
+    // Create the response with our CORS headers
     const modifiedResponse = new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
       headers: {
-        ...Object.fromEntries(response.headers.entries()),
-        ...CORS_HEADERS,
+        ...responseHeaders,
+        ...getCorsHeaders(request),
       },
     });
 
@@ -153,7 +186,7 @@ async function handleFaroProxy(request, env) {
     console.error('Proxy error:', error);
     return new Response('Internal Server Error', { 
       status: 500,
-      headers: CORS_HEADERS 
+      headers: getCorsHeaders(request) 
     });
   }
 }
@@ -165,7 +198,7 @@ async function handleRequest(request, env) {
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
-      headers: CORS_HEADERS,
+      headers: getCorsHeaders(request),
     });
   }
 
@@ -177,7 +210,7 @@ async function handleRequest(request, env) {
   // For non-proxy requests, return 404
   return new Response('Not Found', { 
     status: 404,
-    headers: CORS_HEADERS 
+    headers: getCorsHeaders(request) 
   });
 }
 

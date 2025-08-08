@@ -9,7 +9,7 @@ ALLOWED_ORIGINS = "https://michaellamb.dev,http://localhost:4000,http://127.0.0.
 # Development environment (optional)
 [env.development.vars]
 GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"  
-ALLOWED_ORIGINS = "http://localhost:4000,http://127.0.0.1:4000"
+ALLOWED_ORIGINS = "http://localhost:4000"
 
 # Routes configuration
 [[routes]]
