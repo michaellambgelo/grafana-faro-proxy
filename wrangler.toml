@@ -4,7 +4,7 @@ compatibility_date = "2024-01-15"
 
 [env.production.vars]
 GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
-ALLOWED_ORIGINS = "https://michaellamb.dev,http://localhost:4000,http://127.0.0.1:4000"
+ALLOWED_ORIGINS = "https://michaellamb.dev,https://blog.michaellamb.dev,http://localhost:4000,http://127.0.0.1:4000"
 
 # Development environment (optional)
 [env.development.vars]
@@ -13,5 +13,5 @@ ALLOWED_ORIGINS = "http://localhost:4000"
 
 # Routes configuration
 [[routes]]
-pattern = "michaellamb.dev/faro-proxy*"
+pattern = "grafana.michaellamb.dev/faro-proxy*"
 zone_name = "michaellamb.dev"
