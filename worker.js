@@ -1,6 +1,7 @@
 /**
  * Cloudflare Worker for Grafana Faro RUM Data Proxy
- * Proxies requests from michaellamb.dev to Grafana Cloud
+ * Proxies requests from michaellamb.dev domains to Grafana Cloud
+ * Supports blog.michaellamb.dev (blog) and michaellamb.dev (landing page)
  */
 
 // Default CORS headers with wildcard origin
@@ -18,7 +19,8 @@ function getCorsHeaders(request) {
   
   // If there's an origin header and it's from localhost or your domains, use it
   if (origin && (origin.includes('localhost') || 
-                 origin.includes('michaellamb.dev'))) {
+                 origin.includes('michaellamb.dev') ||
+                 origin.includes('blog.michaellamb.dev'))) {
     return {
       'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -54,7 +56,8 @@ function isValidOrigin(origin, allowedOrigins) {
 function getIngestTokenForApp(appName, env) {
   const tokenMap = {
     'blog': env.BLOG_INGEST_TOKEN,
-    'letterboxd-viewer': env.LETTERBOXD_INGEST_TOKEN
+    'letterboxd-viewer': env.LETTERBOXD_INGEST_TOKEN,
+    'landing': env.LANDING_INGEST_TOKEN
   };
   
   return tokenMap[appName] || env.BLOG_INGEST_TOKEN; // default to blog token
@@ -74,6 +77,16 @@ function detectAppFromRequest(request) {
   if (referer) {
     if (referer.includes('/letterboxd-viewer/')) {
       return 'letterboxd-viewer';
+    }
+    if (referer.includes('blog.michaellamb.dev')) {
+      return 'blog';
+    }
+    if (referer.includes('michaellamb.dev')) {
+      // Check if it's the main domain without blog subdomain
+      if (!referer.includes('blog.')) {
+        return 'landing';
+      }
+      return 'blog';
     }
     // Default to blog for main site
     return 'blog';
