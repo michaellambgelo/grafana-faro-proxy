@@ -89,17 +89,11 @@ function detectAppFromRequest(request) {
       return 'blog';
     }
     // Default to blog for main site
-    return 'blog';
+    return 'landing';
   }
-  
-  // Method 3: Check custom header (if you want to add this to your frontend)
-  const appHeader = request.headers.get('X-App-Name');
-  if (appHeader) {
-    return appHeader;
-  }
-  
+
   // Default to blog
-  return 'blog';
+  return 'landing';
 }
 
 async function handleFaroProxy(request, env) {
