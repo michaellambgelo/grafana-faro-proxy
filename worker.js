@@ -20,6 +20,7 @@ function getCorsHeaders(request) {
   // If there's an origin header and it's from localhost or your domains, use it
   if (origin && (origin.includes('localhost') || 
                  origin.includes('michaellamb.dev') ||
+                 origin.includes('letterboxd.michaellamb.dev') ||
                  origin.includes('blog.michaellamb.dev'))) {
     return {
       'Access-Control-Allow-Origin': origin,
