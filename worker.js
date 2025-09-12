@@ -75,7 +75,7 @@ function detectAppFromRequest(request) {
   
   // Method 2: Detect from referer header
   if (referer) {
-    if (referer.includes('/letterboxd-viewer/')) {
+    if (referer.includes('/letterboxd-viewer/') || referer.includes('https://letterboxd.michaellamb.dev/')) {
       return 'letterboxd-viewer';
     }
     if (referer.includes('blog.michaellamb.dev')) {
