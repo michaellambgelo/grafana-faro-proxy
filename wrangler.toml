@@ -15,3 +15,7 @@ ALLOWED_ORIGINS = "http://localhost:4000"
 [[routes]]
 pattern = "grafana.michaellamb.dev/faro-proxy*"
 zone_name = "michaellamb.dev"
+
+[[routes]]
+pattern = "michaellamb.dev/faro-proxy*"
+zone_name = "michaellamb.dev"
