@@ -56,17 +56,24 @@ function isValidOrigin(origin, allowedOrigins) {
 
 function getIngestTokenForApp(appName, env) {
   const tokenMap = {
-    'blog': env.BLOG_INGEST_TOKEN,
-    'letterboxd-viewer': env.LETTERBOXD_INGEST_TOKEN,
-    'landing': env.LANDING_INGEST_TOKEN
+    'blog': env.BLOG_INGEST_TOKEN?.trim(),
+    'letterboxd-viewer': env.LETTERBOXD_INGEST_TOKEN?.trim(),
+    'landing': env.LANDING_INGEST_TOKEN?.trim()
   };
   
   const token = tokenMap[appName];
   if (!token) {
     console.error(`No ingest token configured for app: ${appName}`);
-  } else {
-    console.log(`Using token for app ${appName}: ${token.substring(0, 5)}...`);
+    return null;
   }
+
+  // Validate token format (Grafana tokens are usually 32-64 alphanumeric characters)
+  if (!/^[a-zA-Z0-9]{32,64}$/.test(token)) {
+    console.error(`Invalid token format for app: ${appName}. Token: "${token}"`);
+    return null;
+  }
+
+  console.log(`Using valid token for app ${appName}: ${token.substring(0, 5)}...`);
   return token;
 }
 
