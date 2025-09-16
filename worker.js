@@ -61,7 +61,11 @@ function getIngestTokenForApp(appName, env) {
     'landing': env.LANDING_INGEST_TOKEN
   };
   
-  return tokenMap[appName];
+  const token = tokenMap[appName];
+  if (!token) {
+    console.error(`No ingest token configured for app: ${appName}`);
+  }
+  return token;
 }
 
 function detectAppFromRequest(request) {
