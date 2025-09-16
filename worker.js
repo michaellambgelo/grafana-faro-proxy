@@ -61,7 +61,7 @@ function getIngestTokenForApp(appName, env) {
     'landing': env.LANDING_INGEST_TOKEN
   };
   
-  return tokenMap[appName] || env.BLOG_INGEST_TOKEN; // default to blog token
+  return tokenMap[appName];
 }
 
 function detectAppFromRequest(request) {
@@ -73,27 +73,8 @@ function detectAppFromRequest(request) {
   if (appParam) {
     return appParam;
   }
-  
-  // Method 2: Detect from referer header
-  if (referer) {
-    if (referer.includes('/letterboxd-viewer/') || referer.includes('https://letterboxd.michaellamb.dev/')) {
-      return 'letterboxd-viewer';
-    }
-    if (referer.includes('blog.michaellamb.dev')) {
-      return 'blog';
-    }
-    if (referer.includes('michaellamb.dev')) {
-      // Check if it's the main domain without blog subdomain
-      if (!referer.includes('blog.')) {
-        return 'landing';
-      }
-      return 'blog';
-    }
-    // Default to blog for main site
-    return 'landing';
-  }
 
-  // Default to blog
+  // Default to landing
   return 'landing';
 }
 
