@@ -1,6 +1,6 @@
 name = "grafana-faro-proxy"
 main = "worker.js"
-compatibility_date = "2024-01-15"
+compatibility_date = "2025-09-15"
 
 [env.production.vars]
 GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
