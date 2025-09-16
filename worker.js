@@ -64,6 +64,8 @@ function getIngestTokenForApp(appName, env) {
   const token = tokenMap[appName];
   if (!token) {
     console.error(`No ingest token configured for app: ${appName}`);
+  } else {
+    console.log(`Using token for app ${appName}: ${token.substring(0, 5)}...`);
   }
   return token;
 }
@@ -127,6 +129,7 @@ async function handleFaroProxy(request, env) {
     
     // Construct the target URL
     const targetUrl = `https://${collectorHost}${collectorPath}${pathSuffix}${url.search}`;
+    console.log(`Final Grafana collector URL: ${targetUrl}`);
     
     // Clone the request to modify headers
     const modifiedRequest = new Request(targetUrl, {
@@ -148,21 +151,23 @@ async function handleFaroProxy(request, env) {
       // For now, we'll pass it through unchanged
     }
 
+    // Log the target URL being called
+    console.log(`Proxying request to: ${targetUrl}`);
+    
     // Make the request to Grafana
     const response = await fetch(modifiedRequest);
     
-    // Create the response with CORS headers
-    // First, get all the original headers except CORS headers
-    const responseHeaders = Object.fromEntries(response.headers.entries());
+    // Log response details
+    console.log(`Response status: ${response.status} ${response.statusText} for app: ${appName}`);
     
-    // Remove any existing CORS headers to prevent duplicates
-    delete responseHeaders['access-control-allow-origin'];
-    delete responseHeaders['access-control-allow-methods'];
-    delete responseHeaders['access-control-allow-headers'];
-    delete responseHeaders['access-control-max-age'];
-    delete responseHeaders['vary'];
+    // Log response headers for debugging
+    const responseHeaders = {};
+    response.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
+    });
+    console.log('Response headers:', JSON.stringify(responseHeaders));
     
-    // Create the response with our CORS headers
+    // Create a new response with our CORS headers
     const modifiedResponse = new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
