@@ -13,6 +13,6 @@ ALLOWED_ORIGINS = "http://localhost:4000"
 
 # Routes configuration
 [[routes]]
-pattern = "grafana.michaellamb.dev/faro-proxy"
+pattern = "grafana.michaellamb.dev"
 zone_name = "michaellamb.dev"
 custom_domain = true
