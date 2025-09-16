@@ -61,15 +61,21 @@ function getIngestTokenForApp(appName, env) {
     'landing': env.LANDING_INGEST_TOKEN?.trim()
   };
   
-  const token = tokenMap[appName];
+  const rawToken = tokenMap[appName];
+  if (!rawToken) {
+    console.error(`No ingest token configured for app: ${appName}. Available apps: ${Object.keys(tokenMap).join(', ')}`);
+    return null;
+  }
+
+  const token = rawToken.trim();
   if (!token) {
-    console.error(`No ingest token configured for app: ${appName}`);
+    console.error(`Empty ingest token for app: ${appName}`);
     return null;
   }
 
   // Validate token format (Grafana tokens are usually 32-64 alphanumeric characters)
   if (!/^[a-zA-Z0-9]{32,64}$/.test(token)) {
-    console.error(`Invalid token format for app: ${appName}. Token: "${token}"`);
+    console.error(`Invalid token format for app: ${appName}. Token length: ${token.length}, Token: "${token}"`);
     return null;
   }
 
@@ -175,11 +181,20 @@ async function handleFaroProxy(request, env) {
     console.log('Response headers:', JSON.stringify(responseHeaders));
     
     // Create a new response with our CORS headers
+    // Remove any CORS headers from the upstream response to avoid conflicts
+    const filteredHeaders = {};
+    Object.entries(responseHeaders).forEach(([key, value]) => {
+      const lowerKey = key.toLowerCase();
+      if (!lowerKey.startsWith('access-control-')) {
+        filteredHeaders[key] = value;
+      }
+    });
+    
     const modifiedResponse = new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
       headers: {
-        ...responseHeaders,
+        ...filteredHeaders,
         ...getCorsHeaders(request),
       },
     });
