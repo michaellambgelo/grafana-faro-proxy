@@ -4,25 +4,33 @@ on:
   push:
     branches:
       - main
+  pull_request:
   workflow_dispatch:
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
   deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     name: Deploy
     environment: Cloudflare Workers
     steps:
-      - uses: actions/checkout@v3
-      
-      # We'll set secrets directly in Cloudflare dashboard
-      # and use wrangler only for deployment
-          
+      - uses: actions/checkout@v4
       - name: Publish to Cloudflare
         uses: cloudflare/wrangler-action@v3.14.1
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          preCommands: |
-            echo "Checking Wrangler version"
-            wrangler --version
-          command: deploy
+          command: deploy --env=""
