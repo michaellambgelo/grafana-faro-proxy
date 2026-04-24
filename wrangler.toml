@@ -2,13 +2,20 @@ name = "grafana-faro-proxy"
 main = "worker.js"
 compatibility_date = "2025-09-15"
 
-[env.production.vars]
-GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
-ALLOWED_ORIGINS = "https://michaellamb.dev,https://blog.michaellamb.dev,https://letterboxd.michaellamb.dev,http://localhost:4000,http://127.0.0.1:4000"
+[dev]
+port = 8787
 
-# Development environment
+# Production defaults (applied on `wrangler deploy` without --env).
+# These were previously in [env.production.vars] but were never actually
+# picked up by the CI deploy, which did not pass --env production. Moving
+# them to top-level [vars] makes the config effective on the existing worker.
+[vars]
+GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
+ALLOWED_ORIGINS = "https://michaellamb.dev,https://blog.michaellamb.dev,https://letterboxd.michaellamb.dev"
+
+# Local dev overrides (used by `wrangler dev --env development`).
 [env.development.vars]
-GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"  
+GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
 ALLOWED_ORIGINS = "http://localhost:4000"
 
 # Routes configuration
@@ -16,3 +23,11 @@ ALLOWED_ORIGINS = "http://localhost:4000"
 pattern = "grafana.michaellamb.dev"
 zone_name = "michaellamb.dev"
 custom_domain = true
+
+# Analytics Engine binding for per-request metrics (app, latency, outcome).
+# The dataset is auto-created on first write; free plan includes 100k writes/day.
+# The worker checks for the binding at runtime and no-ops if unavailable, so
+# commenting this block out is a safe way to disable metric emission.
+[[analytics_engine_datasets]]
+binding = "FARO_PROXY_METRICS"
+dataset = "faro_proxy_metrics"

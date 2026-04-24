@@ -1,242 +1,264 @@
 /**
- * Cloudflare Worker for Grafana Faro RUM Data Proxy
- * Proxies requests from michaellamb.dev domains to Grafana Cloud
- * Supports blog.michaellamb.dev (blog) and michaellamb.dev (landing page)
+ * Cloudflare Worker for Grafana Faro RUM Data Proxy.
+ * Proxies telemetry from michaellamb.dev properties to Grafana Cloud.
+ * App selection is driven by the required `?app=<name>` query parameter;
+ * each app maps to its own ingest token secret.
  */
 
-// Default CORS headers with wildcard origin
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, x-faro-session-id',
-  'Access-Control-Max-Age': '86400',
+const TOKEN_ENV_BY_APP = {
+  blog: 'BLOG_INGEST_TOKEN',
+  'letterboxd-viewer': 'LETTERBOXD_INGEST_TOKEN',
+  landing: 'LANDING_INGEST_TOKEN',
 };
 
-// New function to generate proper CORS headers
-function getCorsHeaders(request) {
-  // Get the Origin header from the request
-  const origin = request.headers.get('Origin');
-  
-  // If there's an origin header and it's from localhost or your domains, use it
-  if (origin && (origin.includes('localhost') || 
-                 origin.includes('michaellamb.dev') ||
-                 origin.includes('letterboxd.michaellamb.dev') ||
-                 origin.includes('blog.michaellamb.dev'))) {
-    return {
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, x-faro-session-id',
-      'Access-Control-Max-Age': '86400',
-      'Vary': 'Origin', // Important when varying response based on Origin
-    };
-  }
-  
-  // Default CORS headers (wildcard)
-  return CORS_HEADERS;
-}
+const CORS_METHODS = 'GET, POST, PUT, DELETE, OPTIONS';
+const CORS_ALLOW_HEADERS = 'Content-Type, Authorization, X-Requested-With, x-faro-session-id';
 
-// Bot detection patterns
 const BOT_USER_AGENTS = [
   'bot', 'crawler', 'spider', 'scraper', 'facebookexternalhit',
   'twitterbot', 'linkedinbot', 'whatsapp', 'telegram', 'slackbot',
-  'googlebot', 'bingbot', 'yandexbot', 'duckduckbot', 'baiduspider'
+  'googlebot', 'bingbot', 'yandexbot', 'duckduckbot', 'baiduspider',
 ];
 
 function isBot(userAgent) {
   if (!userAgent) return false;
   const ua = userAgent.toLowerCase();
-  return BOT_USER_AGENTS.some(pattern => ua.includes(pattern));
+  return BOT_USER_AGENTS.some((pattern) => ua.includes(pattern));
 }
 
-function isValidOrigin(origin, allowedOrigins) {
-  if (!allowedOrigins) return true;
-  const origins = allowedOrigins.split(',').map(o => o.trim());
-  return origins.includes(origin) || origins.includes('*');
+function parseAllowedOrigins(allowedOriginsEnv) {
+  if (!allowedOriginsEnv) return null;
+  const set = new Set();
+  for (const raw of allowedOriginsEnv.split(',')) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    try {
+      const u = new URL(trimmed);
+      set.add(`${u.protocol}//${u.host}`);
+    } catch {
+      console.error(`Ignoring malformed ALLOWED_ORIGINS entry: "${trimmed}"`);
+    }
+  }
+  return set;
 }
 
-function getIngestTokenForApp(appName, env) {
-  const tokenMap = {
-    'blog': env.BLOG_INGEST_TOKEN?.trim(),
-    'letterboxd-viewer': env.LETTERBOXD_INGEST_TOKEN?.trim(),
-    'landing': env.LANDING_INGEST_TOKEN?.trim()
+function isOriginAllowed(origin, allowedSet) {
+  if (!allowedSet || !origin) return false;
+  try {
+    const u = new URL(origin);
+    return allowedSet.has(`${u.protocol}//${u.host}`);
+  } catch {
+    return false;
+  }
+}
+
+function buildCorsHeaders(origin) {
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': CORS_METHODS,
+    'Access-Control-Allow-Headers': CORS_ALLOW_HEADERS,
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
   };
-  
-  const rawToken = tokenMap[appName];
-  if (!rawToken) {
-    console.error(`No ingest token configured for app: ${appName}. Available apps: ${Object.keys(tokenMap).join(', ')}`);
-    return null;
-  }
+}
 
-  const token = rawToken.trim();
+function getIngestToken(appName, env) {
+  const envVarName = TOKEN_ENV_BY_APP[appName];
+  if (!envVarName) return null;
+  const token = env[envVarName]?.trim();
   if (!token) {
-    console.error(`Empty ingest token for app: ${appName}`);
+    console.error(`No ingest token configured for app "${appName}" (env var ${envVarName} unset)`);
     return null;
   }
-
-  // Validate token format (Grafana tokens are usually 32-64 alphanumeric characters)
   if (!/^[a-zA-Z0-9]{32,64}$/.test(token)) {
-    console.error(`Invalid token format for app: ${appName}. Token length: ${token.length}, Token: "${token}"`);
+    console.error(
+      `Invalid token format for app "${appName}" (length ${token.length}, prefix "${token.substring(0, 5)}")`
+    );
     return null;
   }
-
-  console.log(`Using valid token for app ${appName}: ${token.substring(0, 5)}...`);
   return token;
 }
 
-function detectAppFromRequest(request) {
-  const url = new URL(request.url);
-  const referer = request.headers.get('Referer');
-  
-  // Method 1: Check for app parameter in query string
-  const appParam = url.searchParams.get('app');
-  if (appParam) {
-    return appParam;
-  }
+function emitTelemetry(env, ctx) {
+  const entry = {
+    ts: new Date(ctx.start).toISOString(),
+    method: ctx.method,
+    path: ctx.path,
+    origin: ctx.origin || null,
+    app: ctx.app || null,
+    status: ctx.status,
+    upstream_status: ctx.upstream_status ?? null,
+    outcome: ctx.outcome,
+    duration_ms: Date.now() - ctx.start,
+  };
+  console.log(JSON.stringify(entry));
 
-  // Default to landing
-  return 'landing';
+  if (env.FARO_PROXY_METRICS?.writeDataPoint) {
+    try {
+      env.FARO_PROXY_METRICS.writeDataPoint({
+        indexes: [ctx.app || 'unknown'],
+        doubles: [entry.duration_ms, ctx.status, ctx.upstream_status ?? 0],
+        blobs: [ctx.outcome, ctx.method, ctx.origin || 'none'],
+      });
+    } catch (err) {
+      console.error('Analytics Engine writeDataPoint failed:', err);
+    }
+  }
 }
 
-async function handleFaroProxy(request, env) {
-  // Get configuration from environment variables
-  const collectorHost = env.GRAFANA_COLLECTOR_HOST || 'faro-collector-prod-us-east-0.grafana.net';
-  const allowedOrigins = env.ALLOWED_ORIGINS;
-  
-  // Detect which app this request is from and get appropriate token
-  const appName = detectAppFromRequest(request);
-  const ingestToken = getIngestTokenForApp(appName, env);
-  
+function handleHealth(env) {
+  return Response.json({
+    ok: true,
+    apps: Object.keys(TOKEN_ENV_BY_APP),
+    version: env.WORKER_VERSION || 'dev',
+    collector: env.GRAFANA_COLLECTOR_HOST || 'faro-collector-prod-us-east-0.grafana.net',
+  });
+}
+
+async function handleFaroProxy(request, env, corsHeaders, ctx) {
+  const url = new URL(request.url);
+  const appName = url.searchParams.get('app');
+  if (!appName || !(appName in TOKEN_ENV_BY_APP)) {
+    ctx.outcome = 'unknown_app';
+    return new Response('Bad Request: missing or unknown ?app parameter', {
+      status: 400,
+      headers: corsHeaders,
+    });
+  }
+  ctx.app = appName;
+
+  const ingestToken = getIngestToken(appName, env);
   if (!ingestToken) {
-    console.error(`No ingest token found for app: ${appName}`);
-    return new Response('Configuration Error: No ingest token', { 
+    ctx.outcome = 'missing_token';
+    return new Response('Configuration Error: no ingest token', {
       status: 500,
-      headers: getCorsHeaders(request) 
-    });
-  }
-  
-  const collectorPath = `/collect/${ingestToken}`;
-
-  // Validate origin
-  const origin = request.headers.get('Origin');
-  if (allowedOrigins && !isValidOrigin(origin, allowedOrigins)) {
-    return new Response('Forbidden: Invalid origin', { 
-      status: 403,
-      headers: getCorsHeaders(request) 
+      headers: corsHeaders,
     });
   }
 
-  // Bot detection
-  const userAgent = request.headers.get('User-Agent');
-  if (isBot(userAgent)) {
-    console.log('Bot detected, blocking request:', userAgent);
-    return new Response('Blocked: Bot detected', { 
+  if (isBot(request.headers.get('User-Agent'))) {
+    ctx.outcome = 'bot_blocked';
+    return new Response('Blocked: Bot detected', {
       status: 403,
-      headers: getCorsHeaders(request) 
+      headers: corsHeaders,
     });
   }
+
+  const collectorHost = env.GRAFANA_COLLECTOR_HOST || 'faro-collector-prod-us-east-0.grafana.net';
+  const pathSuffix = url.pathname.replace('/faro-proxy', '');
+  const targetUrl = `https://${collectorHost}/collect/${ingestToken}${pathSuffix}${url.search}`;
+
+  const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.set(
+    'X-Forwarded-For',
+    request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || ''
+  );
+  forwardedHeaders.set('X-Forwarded-Proto', 'https');
+  forwardedHeaders.set('Host', collectorHost);
 
   try {
-    // Parse the incoming URL to get any additional path
-    const url = new URL(request.url);
-    const pathSuffix = url.pathname.replace('/faro-proxy', '');
-    
-    // Construct the target URL
-    const targetUrl = `https://${collectorHost}${collectorPath}${pathSuffix}${url.search}`;
-    console.log(`Final Grafana collector URL: ${targetUrl}`);
-    
-    // Clone the request to modify headers
-    const modifiedRequest = new Request(targetUrl, {
+    const upstream = await fetch(targetUrl, {
       method: request.method,
-      headers: request.headers,
+      headers: forwardedHeaders,
       body: request.body,
     });
+    ctx.upstream_status = upstream.status;
+    ctx.outcome = upstream.ok ? 'proxied_ok' : 'upstream_error';
 
-    // Add required headers
-    modifiedRequest.headers.set('X-Forwarded-For', request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || '');
-    modifiedRequest.headers.set('X-Forwarded-Proto', 'https');
-    
-    // Set Host header to the target host
-    modifiedRequest.headers.set('Host', collectorHost);
-
-    // Optional: Add custom data enrichment
-    if (request.method === 'POST') {
-      // You could modify the request body here to add custom fields
-      // For now, we'll pass it through unchanged
-    }
-
-    // Log the target URL being called
-    console.log(`Proxying request to: ${targetUrl}`);
-    
-    // Make the request to Grafana
-    const response = await fetch(modifiedRequest);
-    
-    // Log response details
-    console.log(`Response status: ${response.status} ${response.statusText} for app: ${appName}`);
-    
-    // Log response headers for debugging
-    const responseHeaders = {};
-    response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
-    });
-    console.log('Response headers:', JSON.stringify(responseHeaders));
-    
-    // Create a new response with our CORS headers
-    // Remove any CORS headers from the upstream response to avoid conflicts
-    const filteredHeaders = {};
-    Object.entries(responseHeaders).forEach(([key, value]) => {
-      const lowerKey = key.toLowerCase();
-      if (!lowerKey.startsWith('access-control-')) {
-        filteredHeaders[key] = value;
+    const responseHeaders = new Headers();
+    upstream.headers.forEach((value, key) => {
+      if (!key.toLowerCase().startsWith('access-control-')) {
+        responseHeaders.set(key, value);
       }
     });
-    
-    const modifiedResponse = new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: {
-        ...filteredHeaders,
-        ...getCorsHeaders(request),
-      },
+    for (const [key, value] of Object.entries(corsHeaders)) {
+      responseHeaders.set(key, value);
+    }
+
+    return new Response(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: responseHeaders,
     });
-
-    console.log(`Proxied request for app "${appName}": ${request.method} ${url.pathname} -> ${response.status}`);
-    return modifiedResponse;
-
   } catch (error) {
-    console.error('Proxy error:', error);
-    return new Response('Internal Server Error', { 
-      status: 500,
-      headers: getCorsHeaders(request) 
+    ctx.outcome = 'upstream_fetch_failed';
+    console.error(`Upstream fetch failed for app "${appName}":`, error);
+    return new Response('Bad Gateway', {
+      status: 502,
+      headers: corsHeaders,
     });
   }
+}
+
+async function route(request, env, ctx) {
+  const url = new URL(request.url);
+
+  if (url.pathname === '/health') {
+    ctx.outcome = 'health';
+    return handleHealth(env);
+  }
+
+  const origin = request.headers.get('Origin');
+  const allowedSet = parseAllowedOrigins(env.ALLOWED_ORIGINS);
+
+  if (origin && !isOriginAllowed(origin, allowedSet)) {
+    ctx.outcome = 'origin_denied';
+    return new Response('Forbidden: Invalid origin', { status: 403 });
+  }
+
+  const corsHeaders = origin ? buildCorsHeaders(origin) : {};
+
+  if (request.method === 'OPTIONS') {
+    ctx.outcome = 'preflight';
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  if (url.pathname.startsWith('/faro-proxy')) {
+    return handleFaroProxy(request, env, corsHeaders, ctx);
+  }
+
+  ctx.outcome = 'not_found';
+  return new Response('Not Found', { status: 404, headers: corsHeaders });
 }
 
 async function handleRequest(request, env) {
   const url = new URL(request.url);
-  
-  // Handle CORS preflight requests
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: getCorsHeaders(request),
-    });
+  const ctx = {
+    start: Date.now(),
+    method: request.method,
+    path: url.pathname,
+    origin: request.headers.get('Origin'),
+    app: null,
+    upstream_status: null,
+    outcome: 'unknown',
+    status: 0,
+  };
+
+  let response;
+  try {
+    response = await route(request, env, ctx);
+  } catch (error) {
+    ctx.outcome = 'proxy_exception';
+    console.error('Unhandled proxy error:', error);
+    response = new Response('Internal Server Error', { status: 500 });
   }
 
-  // Route faro-proxy requests
-  if (url.pathname.startsWith('/faro-proxy')) {
-    return handleFaroProxy(request, env);
-  }
-
-  // For non-proxy requests, return 404
-  return new Response('Not Found', { 
-    status: 404,
-    headers: getCorsHeaders(request) 
-  });
+  ctx.status = response.status;
+  emitTelemetry(env, ctx);
+  return response;
 }
 
-// Cloudflare Workers entry point
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     return handleRequest(request, env);
   },
+};
+
+export {
+  parseAllowedOrigins,
+  isOriginAllowed,
+  isBot,
+  getIngestToken,
+  TOKEN_ENV_BY_APP,
+  handleRequest,
 };

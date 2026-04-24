@@ -15,53 +15,71 @@ This proxy service allows multiple web applications to send telemetry data to Gr
 
 The worker acts as a middleware between your web applications and Grafana Cloud:
 
-1. Client applications send telemetry data to `/faro-proxy` endpoint
-2. The proxy determines which application is making the request through:
-   - Query parameter: `?app=app-name`
-   - Referer header analysis
-   - Custom `X-App-Name` header
-3. The appropriate ingest token is selected based on the application
-4. The request is forwarded to Grafana Cloud with necessary headers
+1. Client applications `POST` telemetry to `/faro-proxy?app=<name>`. The `app` query parameter is **required** — unknown or missing apps return `400 Bad Request`.
+2. The app name is resolved to an ingest token (`*_INGEST_TOKEN` secret) via the map in `worker.js` (`TOKEN_ENV_BY_APP`).
+3. The `Origin` header is validated against `ALLOWED_ORIGINS` with exact protocol+host match. Disallowed origins receive `403` with no CORS headers.
+4. Bot user-agents are rejected with `403`.
+5. The request is forwarded to Grafana Cloud; upstream 2xx/4xx pass through, upstream network failures surface as `502 Bad Gateway`.
 
 ## Configuration
 
-The worker requires the following environment variables to be set in the Cloudflare Workers dashboard:
+### Environment variables (in `wrangler.toml`)
 
 | Variable | Description | Example |
-|----------|-------------|--------|
+|----------|-------------|---------|
 | `GRAFANA_COLLECTOR_HOST` | Grafana Faro collector hostname | `faro-collector-prod-us-east-0.grafana.net` |
-| `BLOG_INGEST_TOKEN` | Ingest token for blog application | `your-blog-token-here` |
-| `LETTERBOXD_INGEST_TOKEN` | Ingest token for letterboxd viewer application | `your-letterboxd-token-here` |
-| `ALLOWED_ORIGINS` | Comma-separated list of allowed origins | `https://michaellamb.dev,http://localhost:3000` |
+| `ALLOWED_ORIGINS` | Comma-separated list of allowed origins (exact protocol+host match, default-deny when unset) | `https://michaellamb.dev,https://blog.michaellamb.dev` |
+
+### Secrets (set via `wrangler secret put`)
+
+| Secret | App name |
+|--------|----------|
+| `BLOG_INGEST_TOKEN` | `blog` |
+| `LETTERBOXD_INGEST_TOKEN` | `letterboxd-viewer` |
+| `LANDING_INGEST_TOKEN` | `landing` |
+
+### Adding a new app
+
+1. **Provision the Grafana Cloud app** and copy its ingest token.
+2. **Register the app name** by adding an entry to `TOKEN_ENV_BY_APP` in `worker.js` (e.g. `'subscribe': 'SUBSCRIBE_INGEST_TOKEN'`).
+3. **Set the secret** on the worker: `npx wrangler secret put SUBSCRIBE_INGEST_TOKEN`.
+4. **Allow the origin** by adding it to `ALLOWED_ORIGINS` in `wrangler.toml`.
+5. **Wire up the client** by copying `client/faro-init.js` into the consuming site and setting `APP_NAME` to the value you registered in step 2.
+6. **Deploy** the worker; verify in Grafana Cloud Faro explorer that events for the new `app.name` are arriving.
 
 ## Supported Applications
 
-The proxy currently supports routing for the following applications:
-
-- `blog` - Main blog/website (default)
-- `letterboxd-viewer` or `letterboxd` - Letterboxd viewer application
+- `blog` — `blog.michaellamb.dev` (Jekyll)
+- `letterboxd-viewer` — `letterboxd.michaellamb.dev` (static dashboard)
+- `landing` — `michaellamb.dev` (landing page)
 
 ## Security Features
 
-- **Origin Validation**: Requests are checked against the `ALLOWED_ORIGINS` list
-- **Bot Detection**: Requests from common bot user agents are blocked
-- **CORS Headers**: Proper CORS headers are added to all responses
+- **Exact-host origin validation** — `ALLOWED_ORIGINS` is parsed and compared against the request `Origin` URL's `protocol://host`. Substring matches are **not** permitted. Default-deny when the env var is unset.
+- **Bot filtering** — common bot user-agents are rejected with `403`.
+- **Token redaction** — ingest tokens never appear in logs (prefix + length only on validation failure).
+- **Upstream failure isolation** — network errors to Grafana return `502`, distinct from `500` config errors and pass-through upstream 4xx/5xx.
+
+## Observability
+
+- **`GET /health`** — returns `{ ok, apps, version, collector }` for uptime checks. No CORS/origin requirement.
+- **Structured request logs** — one JSON line per request via `console.log`, with `ts`, `method`, `path`, `origin`, `app`, `status`, `upstream_status`, `outcome`, `duration_ms`. Visible via `wrangler tail` or shippable to Loki through Cloudflare Logpush. The `outcome` field is one of: `proxied_ok`, `upstream_error`, `upstream_fetch_failed`, `unknown_app`, `missing_token`, `bot_blocked`, `origin_denied`, `preflight`, `health`, `not_found`, `proxy_exception`.
+- **Analytics Engine metrics** — when the `FARO_PROXY_METRICS` binding is available (configured in `wrangler.toml`), each request emits a datapoint with the app (index), duration, status, upstream status, outcome, method, and origin. Queryable from Grafana via the Cloudflare Analytics Engine datasource. Comment out the `[[analytics_engine_datasets]]` block to disable.
 
 ## Usage
 
-In your client application, configure the Grafana Faro SDK to use this proxy instead of directly connecting to Grafana Cloud:
+In your client application, configure the Grafana Faro SDK to use this proxy with the required `?app=` query parameter:
 
 ```javascript
 import { initializeFaro } from '@grafana/faro-web-sdk';
 
 initializeFaro({
-  url: 'https://yourdomain.com/faro-proxy',
-  // Optional: Specify which app this is for multi-app setups
-  // transportOptions: {
-  //   fetch: {
-  //     url: 'https://yourdomain.com/faro-proxy?app=your-app-name'
-  //   }
-  // }
+  url: 'https://grafana.michaellamb.dev/faro-proxy?app=your-app-name',
+  app: {
+    name: 'your-app-name',
+    version: '1.0.0',
+    environment: 'production',
+  },
 });
 ```
 
@@ -115,28 +133,16 @@ git clone https://github.com/michaellambgelo/grafana-faro-proxy.git
 cd grafana-faro-proxy
 ```
 
-### 3. Create a wrangler.toml file (if not already present)
+### 3. Configure local secrets
 
-Create a `wrangler.toml` file in the root of your project with the following content:
+The committed `wrangler.toml` already contains the development environment config (port 8787, `ALLOWED_ORIGINS=http://localhost:4000`). Create a `.dev.vars` file alongside it with your ingest tokens:
 
-```toml
-name = "grafana-faro-proxy"
-main = "worker.js"
-compatibility_date = "2023-01-01"
-
-[vars]
-GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
-ALLOWED_ORIGINS = "*"
 ```
-
-Create a file in the root directory of the Cloudflare Worker named `.dev.vars` with this template:
-
-```toml
 BLOG_INGEST_TOKEN = "your-development-ingest-token"
 LETTERBOXD_INGEST_TOKEN = "your-development-ingest-token"
 ```
 
-Replace the ingest tokens with development tokens or dummy values for local testing.
+Use a dev-only Grafana ingest token or a 32+ char alphanumeric placeholder that passes format validation for smoke tests.
 
 ### 4. Run the worker locally
 
@@ -157,7 +163,7 @@ With your Jekyll site running on `localhost:4000` and your Cloudflare Worker run
 When you're ready to deploy changes to your Cloudflare Worker:
 
 ```bash
-wrangler publish
+wrangler deploy
 ```
 
 Remember to keep your production ingest tokens secure and never commit them to version control.
