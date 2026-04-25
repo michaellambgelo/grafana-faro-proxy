@@ -33,4 +33,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: deploy --env=""
+          # Pin to v4 to match package.json. Without this the action installs
+          # its hardcoded fallback (wrangler 3.90.0), which doesn't accept
+          # the --env="" syntax and rejects empty-string environment names.
+          wranglerVersion: "4.37.0"
+          command: deploy
