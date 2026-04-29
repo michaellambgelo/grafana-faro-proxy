@@ -3,8 +3,10 @@ import worker, {
   parseAllowedOrigins,
   isOriginAllowed,
   isBot,
+  isServerToServer,
   getIngestToken,
   TOKEN_ENV_BY_APP,
+  SERVER_TOKEN_HEADER,
   handleRequest,
 } from './worker.js';
 
@@ -128,12 +130,44 @@ describe('TOKEN_ENV_BY_APP registry', () => {
     expect(TOKEN_ENV_BY_APP).toHaveProperty('blog');
     expect(TOKEN_ENV_BY_APP).toHaveProperty('letterboxd-viewer');
     expect(TOKEN_ENV_BY_APP).toHaveProperty('landing');
+    expect(TOKEN_ENV_BY_APP).toHaveProperty('discord-embed-builder-slash');
   });
 
   it('maps each app to an *_INGEST_TOKEN env var', () => {
     for (const envVar of Object.values(TOKEN_ENV_BY_APP)) {
       expect(envVar).toMatch(/_INGEST_TOKEN$/);
     }
+  });
+});
+
+describe('isServerToServer', () => {
+  it('returns false when the header is absent', () => {
+    const req = new Request('https://example.com', { method: 'POST' });
+    expect(isServerToServer(req, { SERVER_SHARED_SECRET: 'secret' })).toBe(false);
+  });
+
+  it('returns false when the env secret is unset', () => {
+    const req = new Request('https://example.com', {
+      method: 'POST',
+      headers: { [SERVER_TOKEN_HEADER]: 'secret' },
+    });
+    expect(isServerToServer(req, {})).toBe(false);
+  });
+
+  it('returns false when the values do not match', () => {
+    const req = new Request('https://example.com', {
+      method: 'POST',
+      headers: { [SERVER_TOKEN_HEADER]: 'wrong' },
+    });
+    expect(isServerToServer(req, { SERVER_SHARED_SECRET: 'secret' })).toBe(false);
+  });
+
+  it('returns true when the header matches the env secret', () => {
+    const req = new Request('https://example.com', {
+      method: 'POST',
+      headers: { [SERVER_TOKEN_HEADER]: 'secret' },
+    });
+    expect(isServerToServer(req, { SERVER_SHARED_SECRET: 'secret' })).toBe(true);
   });
 });
 
@@ -316,6 +350,87 @@ describe('handleRequest (integration)', () => {
       makeEnv()
     );
     expect(res.status).toBe(404);
+  });
+
+  it('server-to-server bypass: forwards even with no Origin and a bot-shaped UA', async () => {
+    fetchSpy.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+    const res = await handleRequest(
+      req('/faro-proxy?app=discord-embed-builder-slash', {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'cfworker-bot',
+          [SERVER_TOKEN_HEADER]: 'shared-secret',
+        },
+        body: '{"events":[]}',
+      }),
+      makeEnv({
+        SERVER_SHARED_SECRET: 'shared-secret',
+        EMBED_BUILDER_SLASH_INGEST_TOKEN: VALID_TOKEN,
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [forwardedUrl] = fetchSpy.mock.calls[0];
+    expect(forwardedUrl).toContain('faro-collector-test.example.com');
+    expect(forwardedUrl).toContain(VALID_TOKEN);
+  });
+
+  it('server-to-server bypass: rejects requests without the matching token via the existing gates', async () => {
+    const res = await handleRequest(
+      req('/faro-proxy?app=discord-embed-builder-slash', {
+        method: 'POST',
+        headers: { Origin: 'https://attacker.example' },
+        body: '{}',
+      }),
+      makeEnv({
+        SERVER_SHARED_SECRET: 'shared-secret',
+        EMBED_BUILDER_SLASH_INGEST_TOKEN: VALID_TOKEN,
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('server-to-server bypass: a bad token does not bypass the gates (Origin denied)', async () => {
+    const res = await handleRequest(
+      req('/faro-proxy?app=discord-embed-builder-slash', {
+        method: 'POST',
+        headers: {
+          Origin: 'https://attacker.example',
+          [SERVER_TOKEN_HEADER]: 'wrong-secret',
+        },
+        body: '{}',
+      }),
+      makeEnv({
+        SERVER_SHARED_SECRET: 'shared-secret',
+        EMBED_BUILDER_SLASH_INGEST_TOKEN: VALID_TOKEN,
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('server-to-server bypass: missing ingest token still fails with 500', async () => {
+    const res = await handleRequest(
+      req('/faro-proxy?app=discord-embed-builder-slash', {
+        method: 'POST',
+        headers: { [SERVER_TOKEN_HEADER]: 'shared-secret' },
+        body: '{}',
+      }),
+      makeEnv({ SERVER_SHARED_SECRET: 'shared-secret' })
+    );
+    expect(res.status).toBe(500);
+  });
+
+  it('browser callers without a server token continue to work normally', async () => {
+    fetchSpy.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+    const res = await handleRequest(
+      req('/faro-proxy?app=blog', {
+        method: 'POST',
+        headers: { Origin: 'https://blog.michaellamb.dev' },
+        body: '{}',
+      }),
+      makeEnv({ SERVER_SHARED_SECRET: 'shared-secret' })
+    );
+    expect(res.status).toBe(200);
   });
 });
 

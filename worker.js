@@ -9,7 +9,14 @@ const TOKEN_ENV_BY_APP = {
   blog: 'BLOG_INGEST_TOKEN',
   'letterboxd-viewer': 'LETTERBOXD_INGEST_TOKEN',
   landing: 'LANDING_INGEST_TOKEN',
+  // Server-to-server telemetry from the discord-embed-builder Worker's
+  // /interactions endpoint. Reached via the X-Server-Token header bypass
+  // (see isServerToServer below); the Origin allowlist and bot-UA gate
+  // do not apply when the bypass is active.
+  'discord-embed-builder-slash': 'EMBED_BUILDER_SLASH_INGEST_TOKEN',
 };
+
+const SERVER_TOKEN_HEADER = 'X-Server-Token';
 
 const CORS_METHODS = 'GET, POST, PUT, DELETE, OPTIONS';
 const CORS_ALLOW_HEADERS = 'Content-Type, Authorization, X-Requested-With, x-faro-session-id';
@@ -60,6 +67,22 @@ function buildCorsHeaders(origin) {
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
   };
+}
+
+/**
+ * Server-to-server callers (e.g. another Cloudflare Worker emitting telemetry)
+ * cannot satisfy the browser-oriented Origin allowlist or the bot-UA block.
+ * They authenticate by sending a shared secret in the X-Server-Token header,
+ * matching env.SERVER_SHARED_SECRET. When matched, the request bypasses both
+ * gates; ingest token lookup and forwarding to the collector continue
+ * normally.
+ */
+function isServerToServer(request, env) {
+  const presented = request.headers.get(SERVER_TOKEN_HEADER);
+  if (!presented) return false;
+  const expected = env.SERVER_SHARED_SECRET;
+  if (!expected) return false;
+  return presented === expected;
 }
 
 function getIngestToken(appName, env) {
@@ -115,7 +138,7 @@ function handleHealth(env) {
   });
 }
 
-async function handleFaroProxy(request, env, corsHeaders, ctx) {
+async function handleFaroProxy(request, env, corsHeaders, ctx, serverToServer) {
   const url = new URL(request.url);
   const appName = url.searchParams.get('app');
   if (!appName || !(appName in TOKEN_ENV_BY_APP)) {
@@ -136,7 +159,7 @@ async function handleFaroProxy(request, env, corsHeaders, ctx) {
     });
   }
 
-  if (isBot(request.headers.get('User-Agent'))) {
+  if (!serverToServer && isBot(request.headers.get('User-Agent'))) {
     ctx.outcome = 'bot_blocked';
     return new Response('Blocked: Bot detected', {
       status: 403,
@@ -198,10 +221,11 @@ async function route(request, env, ctx) {
     return handleHealth(env);
   }
 
+  const serverToServer = isServerToServer(request, env);
   const origin = request.headers.get('Origin');
   const allowedSet = parseAllowedOrigins(env.ALLOWED_ORIGINS);
 
-  if (origin && !isOriginAllowed(origin, allowedSet)) {
+  if (!serverToServer && origin && !isOriginAllowed(origin, allowedSet)) {
     ctx.outcome = 'origin_denied';
     return new Response('Forbidden: Invalid origin', { status: 403 });
   }
@@ -214,7 +238,7 @@ async function route(request, env, ctx) {
   }
 
   if (url.pathname.startsWith('/faro-proxy')) {
-    return handleFaroProxy(request, env, corsHeaders, ctx);
+    return handleFaroProxy(request, env, corsHeaders, ctx, serverToServer);
   }
 
   ctx.outcome = 'not_found';
@@ -258,7 +282,9 @@ export {
   parseAllowedOrigins,
   isOriginAllowed,
   isBot,
+  isServerToServer,
   getIngestToken,
   TOKEN_ENV_BY_APP,
+  SERVER_TOKEN_HEADER,
   handleRequest,
 };
