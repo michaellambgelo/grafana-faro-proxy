@@ -130,6 +130,7 @@ describe('TOKEN_ENV_BY_APP registry', () => {
     expect(TOKEN_ENV_BY_APP).toHaveProperty('blog');
     expect(TOKEN_ENV_BY_APP).toHaveProperty('letterboxd-viewer');
     expect(TOKEN_ENV_BY_APP).toHaveProperty('landing');
+    expect(TOKEN_ENV_BY_APP).toHaveProperty('discord-embed-builder');
     expect(TOKEN_ENV_BY_APP).toHaveProperty('discord-embed-builder-slash');
   });
 
@@ -208,6 +209,26 @@ describe('handleRequest (integration)', () => {
     );
     expect(res.status).toBe(403);
     expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
+  });
+
+  it('allows the GitHub Pages origin for the discord-embed-builder app', async () => {
+    fetchSpy.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+    const res = await handleRequest(
+      req('/faro-proxy?app=discord-embed-builder', {
+        method: 'POST',
+        headers: { Origin: 'https://michaellambgelo.github.io' },
+        body: '{"events":[]}',
+      }),
+      makeEnv({
+        ALLOWED_ORIGINS:
+          'https://michaellamb.dev,https://blog.michaellamb.dev,https://letterboxd.michaellamb.dev,https://michaellambgelo.github.io',
+        EMBED_BUILDER_INGEST_TOKEN: VALID_TOKEN,
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [forwardedUrl] = fetchSpy.mock.calls[0];
+    expect(forwardedUrl).toContain(VALID_TOKEN);
   });
 
   it('returns 400 when ?app= is missing', async () => {
