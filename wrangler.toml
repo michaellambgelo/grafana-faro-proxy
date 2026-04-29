@@ -24,6 +24,15 @@ pattern = "grafana.michaellamb.dev"
 zone_name = "michaellamb.dev"
 custom_domain = true
 
+# Server-to-server telemetry secrets (set via `wrangler secret put`):
+# - EMBED_BUILDER_SLASH_INGEST_TOKEN — Grafana Cloud ingest token for the
+#   discord-embed-builder slash-command app entry. Required for telemetry
+#   from that source to forward upstream.
+# - SERVER_SHARED_SECRET — shared secret matched against the X-Server-Token
+#   header to bypass the Origin allowlist and bot-UA gate. Required for any
+#   server-to-server caller (no browser sends X-Server-Token, so this does
+#   not affect existing Faro RUM traffic).
+
 # Analytics Engine binding for per-request metrics (app, latency, outcome).
 # The dataset is auto-created on first write; free plan includes 100k writes/day.
 # The worker checks for the binding at runtime and no-ops if unavailable, so
