@@ -11,12 +11,12 @@ port = 8787
 # them to top-level [vars] makes the config effective on the existing worker.
 [vars]
 GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
-ALLOWED_ORIGINS = "https://michaellamb.dev,https://blog.michaellamb.dev,https://letterboxd.michaellamb.dev"
+ALLOWED_ORIGINS = "https://michaellamb.dev,https://blog.michaellamb.dev,https://letterboxd.michaellamb.dev,https://michaellambgelo.github.io"
 
 # Local dev overrides (used by `wrangler dev --env development`).
 [env.development.vars]
 GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
-ALLOWED_ORIGINS = "http://localhost:4000"
+ALLOWED_ORIGINS = "http://localhost:4000,http://localhost:5173"
 
 # Routes configuration
 [[routes]]
@@ -24,10 +24,17 @@ pattern = "grafana.michaellamb.dev"
 zone_name = "michaellamb.dev"
 custom_domain = true
 
-# Server-to-server telemetry secrets (set via `wrangler secret put`):
-# - EMBED_BUILDER_SLASH_INGEST_TOKEN — Grafana Cloud ingest token for the
-#   discord-embed-builder slash-command app entry. Required for telemetry
-#   from that source to forward upstream.
+# Required secrets (set via `wrangler secret put <NAME>`):
+#
+# Per-app ingest tokens — Grafana Cloud, used to forward telemetry upstream:
+# - BLOG_INGEST_TOKEN
+# - LETTERBOXD_INGEST_TOKEN
+# - LANDING_INGEST_TOKEN
+# - EMBED_BUILDER_INGEST_TOKEN — discord-embed-builder browser RUM
+# - EMBED_BUILDER_SLASH_INGEST_TOKEN — discord-embed-builder slash-command
+#   server-to-server telemetry
+#
+# Server-to-server bypass:
 # - SERVER_SHARED_SECRET — shared secret matched against the X-Server-Token
 #   header to bypass the Origin allowlist and bot-UA gate. Required for any
 #   server-to-server caller (no browser sends X-Server-Token, so this does

@@ -9,6 +9,10 @@ const TOKEN_ENV_BY_APP = {
   blog: 'BLOG_INGEST_TOKEN',
   'letterboxd-viewer': 'LETTERBOXD_INGEST_TOKEN',
   landing: 'LANDING_INGEST_TOKEN',
+  // Browser RUM for the discord-embed-builder Vue app served from GitHub
+  // Pages. Routed via the standard browser path (Origin allowlist + bot-UA
+  // gate apply).
+  'discord-embed-builder': 'EMBED_BUILDER_INGEST_TOKEN',
   // Server-to-server telemetry from the discord-embed-builder Worker's
   // /interactions endpoint. Reached via the X-Server-Token header bypass
   // (see isServerToServer below); the Origin allowlist and bot-UA gate
