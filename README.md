@@ -1,5 +1,8 @@
 # Grafana Faro Proxy
 
+[![Status](https://status.michaellamb.dev/api/badge/14/status)](https://status.michaellamb.dev)
+[![Uptime 30d](https://status.michaellamb.dev/api/badge/14/uptime/720?style=flat)](https://status.michaellamb.dev)
+
 A Cloudflare Worker that proxies Real User Monitoring (RUM) data from web applications to Grafana Cloud's Faro collector.
 
 ## Overview
