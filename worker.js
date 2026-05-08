@@ -18,6 +18,9 @@ const TOKEN_ENV_BY_APP = {
   // (see isServerToServer below); the Origin allowlist and bot-UA gate
   // do not apply when the bypass is active.
   'discord-embed-builder-slash': 'EMBED_BUILDER_SLASH_INGEST_TOKEN',
+  // Browser RUM for boxd-card.michaellamb.dev (hero + /app/ React build).
+  // Hero and app are segmented downstream via the `surface` event attribute.
+  'boxd-card': 'BOXD_CARD_INGEST_TOKEN',
 };
 
 const SERVER_TOKEN_HEADER = 'X-Server-Token';
