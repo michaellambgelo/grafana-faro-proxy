@@ -11,7 +11,7 @@ port = 8787
 # them to top-level [vars] makes the config effective on the existing worker.
 [vars]
 GRAFANA_COLLECTOR_HOST = "faro-collector-prod-us-east-0.grafana.net"
-ALLOWED_ORIGINS = "https://michaellamb.dev,https://blog.michaellamb.dev,https://letterboxd.michaellamb.dev,https://michaellambgelo.github.io,https://boxd-card.michaellamb.dev"
+ALLOWED_ORIGINS = "https://michaellamb.dev,https://blog.michaellamb.dev,https://letterboxd.michaellamb.dev,https://michaellambgelo.github.io,https://boxd-card.com,https://boxd-card.michaellamb.dev"
 
 # Local dev overrides (used by `wrangler dev --env development`).
 [env.development.vars]
