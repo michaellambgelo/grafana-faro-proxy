@@ -40,6 +40,10 @@ The worker acts as a middleware between your web applications and Grafana Cloud:
 | `BLOG_INGEST_TOKEN` | `blog` |
 | `LETTERBOXD_INGEST_TOKEN` | `letterboxd-viewer` |
 | `LANDING_INGEST_TOKEN` | `landing` |
+| `EMBED_BUILDER_INGEST_TOKEN` | `discord-embed-builder` |
+| `EMBED_BUILDER_SLASH_INGEST_TOKEN` | `discord-embed-builder-slash` (server-to-server) |
+| `BOXD_CARD_INGEST_TOKEN` | `boxd-card` |
+| `FERTILE_GROUND_EVENTS_INGEST_TOKEN` | `fertile-ground-events` |
 
 ### Adding a new app
 
@@ -55,6 +59,10 @@ The worker acts as a middleware between your web applications and Grafana Cloud:
 - `blog` — `blog.michaellamb.dev` (Jekyll)
 - `letterboxd-viewer` — `letterboxd.michaellamb.dev` (static dashboard)
 - `landing` — `michaellamb.dev` (landing page)
+- `discord-embed-builder` — `michaellambgelo.github.io` (Discord embed builder, browser RUM)
+- `discord-embed-builder-slash` — server-to-server telemetry from the embed-builder Worker (`X-Server-Token` bypass; not a separate Faro app)
+- `boxd-card` — `boxd-card.com` / `boxd-card.michaellamb.dev` (hero + web app; segmented by `surface` event attribute)
+- `fertile-ground-events` — `fertile-ground-events.pages.dev` (trivia-scorer SPA; admin + public segmented by `surface` session attribute)
 
 ## Security Features
 
