@@ -21,6 +21,10 @@ const TOKEN_ENV_BY_APP = {
   // Browser RUM for boxd-card.com (hero at /about + /app/ React build).
   // Hero and app are segmented downstream via the `surface` event attribute.
   'boxd-card': 'BOXD_CARD_INGEST_TOKEN',
+  // Browser RUM for the fertile-ground-events React SPA (trivia-scorer).
+  // Admin console and public leaderboard/archive are segmented downstream
+  // via the `surface` session attribute (admin | public).
+  'fertile-ground-events': 'FERTILE_GROUND_EVENTS_INGEST_TOKEN',
 };
 
 const SERVER_TOKEN_HEADER = 'X-Server-Token';
