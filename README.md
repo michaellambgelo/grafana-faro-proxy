@@ -59,10 +59,81 @@ The worker acts as a middleware between your web applications and Grafana Cloud:
 - `blog` — `blog.michaellamb.dev` (Jekyll)
 - `letterboxd-viewer` — `letterboxd.michaellamb.dev` (static dashboard)
 - `landing` — `michaellamb.dev` (landing page)
-- `discord-embed-builder` — `michaellambgelo.github.io` (Discord embed builder, browser RUM)
+- `discord-embed-builder` — `embed-builder.michaellamb.dev` (Discord embed builder, browser RUM; **its origin is not yet in `ALLOWED_ORIGINS`** — see Architecture)
 - `discord-embed-builder-slash` — server-to-server telemetry from the embed-builder Worker (`X-Server-Token` bypass; not a separate Faro app)
 - `boxd-card` — `boxd-card.com` / `boxd-card.michaellamb.dev` (hero + web app; segmented by `surface` event attribute)
 - `fertile-ground-events` — `fertile-ground-events.pages.dev` (trivia-scorer SPA; admin + public segmented by `surface` session attribute)
+
+## Architecture: why this proxy exists
+
+Two invariants define the whole design. Everything else is plumbing.
+
+### 1. The proxy owns the ingest tokens — the browser never sees one
+
+Grafana Cloud authenticates ingest by putting the token **in the collector URL**:
+`https://<collector>/collect/<INGEST_TOKEN>`. A browser that posted directly would have to carry
+that token in its bundle, which publishes it — anyone reading the JS could then write arbitrary
+telemetry into that Grafana stack.
+
+So the browser never holds one. It posts to this Worker with nothing but `?app=<name>`. The Worker
+resolves the name through `TOKEN_ENV_BY_APP`, reads the matching `*_INGEST_TOKEN` **secret from its
+own environment**, and constructs the collector URL server-side.
+
+Consequences worth knowing:
+
+- **Tokens exist only as secrets on this Worker.** Not in any app's repo, bundle, or build config.
+- **Rotating a token is `wrangler secret put` here — no app rebuild, no redeploy of the app.**
+- **A missing or malformed token fails closed** with `500 Configuration Error: no ingest token`.
+  Tokens must match `^[a-zA-Z0-9]{32,64}$`; failures log prefix and length only, never the value.
+
+### 2. CORS binds each app's telemetry to the origin it is actually deployed at
+
+`?app=` is caller-controlled — anyone can send any app name. The token alone therefore proves
+*which* monitor is being written to, not *who* may write to it. **The Origin allowlist supplies the
+second half.**
+
+`ALLOWED_ORIGINS` is compared as an exact `protocol://host` match, substrings are not accepted, and
+an unset value is **default-deny**. A disallowed origin gets `403` with **no CORS headers at all**,
+so the browser discards the response even if it were to succeed.
+
+Together: **the token says which Grafana monitor; the origin says that the caller is the real
+deployed app.** Neither is sufficient alone, and that is the point.
+
+The practical rule that follows:
+
+> **An app served from a new domain must be added to `ALLOWED_ORIGINS`, or its RUM is rejected —
+> even though its ingest token is set correctly.** The failure looks nothing like a token problem.
+
+Two deliberate exceptions:
+
+- **Server-to-server callers** cannot present a browser `Origin` and would trip the bot filter, so
+  they authenticate with `X-Server-Token` matching `SERVER_SHARED_SECRET`, which bypasses both
+  gates. `discord-embed-builder-slash` is the only current user.
+- **`GET /health`** is ungated so uptime monitors can reach it.
+
+`Origin` is set by the user agent and cannot be forged *from a browser*. It is not a defence against
+`curl`, and is not meant to be — that is what the bot-UA filter and the per-app token scoping cover.
+
+### Origin ↔ deployed app
+
+Every row here must match the app's real serving origin, not where it used to live.
+
+| App (`?app=`) | Actual serving origin | In `ALLOWED_ORIGINS`? |
+|---|---|---|
+| `blog` | `blog.michaellamb.dev` | yes |
+| `letterboxd-viewer` | `letterboxd.michaellamb.dev` | yes |
+| `landing` | `michaellamb.dev` | yes |
+| `discord-embed-builder` | **`embed-builder.michaellamb.dev`** (see `public/CNAME`) | **NO — see below** |
+| `boxd-card` | `boxd-card.com`, `boxd-card.michaellamb.dev` | yes |
+| `fertile-ground-events` | `fertile-ground-events.pages.dev` | yes |
+
+> **Known gap (2026-08-23).** `ALLOWED_ORIGINS` lists `https://michaellambgelo.github.io` for
+> `discord-embed-builder`, but that app is served from its custom domain
+> `embed-builder.michaellamb.dev`. Verified: `Origin: https://embed-builder.michaellamb.dev` →
+> **`403`, no `access-control-allow-origin`**, while allowed origins return `405`. Its ingest token
+> is set correctly and its browser RUM is still rejected — exactly the failure mode described above.
+> Fix by adding `https://embed-builder.michaellamb.dev` (and the admin origin, if it emits RUM) to
+> `ALLOWED_ORIGINS` and redeploying.
 
 ## Security Features
 
