@@ -75,6 +75,39 @@ The worker acts as a middleware between your web applications and Grafana Cloud:
 
 - **`GET /health`** — returns `{ ok, apps, version, collector }` for uptime checks. No CORS/origin requirement.
 - **Structured request logs** — one JSON line per request via `console.log`, with `ts`, `method`, `path`, `origin`, `app`, `status`, `upstream_status`, `outcome`, `duration_ms`. Visible via `wrangler tail` or shippable to Loki through Cloudflare Logpush. The `outcome` field is one of: `proxied_ok`, `upstream_error`, `upstream_fetch_failed`, `unknown_app`, `missing_token`, `bot_blocked`, `origin_denied`, `preflight`, `health`, `not_found`, `proxy_exception`.
+### Verifying routing is alive
+
+The health signal is **`GET /faro-proxy?app=<known-app>` → `405`**.
+
+`405` means the route matched and the app was recognised, and the method was
+rejected — which is exactly what a `GET` on an ingest endpoint should do. It is
+the cheapest proof that routing and the app table are both intact.
+
+Read the response codes as:
+
+| Request | Expected | Meaning |
+|---|---|---|
+| `GET /faro-proxy?app=blog` | **405** | healthy — route matched, app known |
+| `GET /faro-proxy?app=nonsense` | 400 | route matched, app not in `TOKEN_ENV_BY_APP` |
+| `GET /faro-proxy?app=<known>` | **404** | **routing is broken** — every app goes dark silently |
+| `GET /faro-proxy?app=<known>` | 500 | app known but its ingest token is unset/malformed |
+| `GET /` | 404 | normal — `/` is not a route |
+
+**Do not check `GET /?app=<known>`.** That path returns `404` for every app
+including healthy ones, because the proxy route is `/faro-proxy` and `/` is a
+legitimate 404. Used as a health check it reports a fully healthy service as
+catastrophically broken. (A prior audit recorded the signal that way; it cost a
+real investigation on 2026-08-23.)
+
+One-liner across every configured app:
+
+```bash
+for a in $(curl -s https://grafana.michaellamb.dev/health | jq -r '.apps[]'); do
+  printf '%-32s %s\n' "$a" \
+    "$(curl -s -o /dev/null -w '%{http_code}' "https://grafana.michaellamb.dev/faro-proxy?app=$a")"
+done
+```
+
 - **Analytics Engine metrics** — when the `FARO_PROXY_METRICS` binding is available (configured in `wrangler.toml`), each request emits a datapoint with the app (index), duration, status, upstream status, outcome, method, and origin. Queryable from Grafana via the Cloudflare Analytics Engine datasource. Comment out the `[[analytics_engine_datasets]]` block to disable.
 
 ## Usage
