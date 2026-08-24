@@ -123,17 +123,25 @@ Every row here must match the app's real serving origin, not where it used to li
 | `blog` | `blog.michaellamb.dev` | yes |
 | `letterboxd-viewer` | `letterboxd.michaellamb.dev` | yes |
 | `landing` | `michaellamb.dev` | yes |
-| `discord-embed-builder` | **`embed-builder.michaellamb.dev`** (see `public/CNAME`) | **NO — see below** |
+| `discord-embed-builder` | `embed-builder.michaellamb.dev` (see `public/CNAME`) | yes |
 | `boxd-card` | `boxd-card.com`, `boxd-card.michaellamb.dev` | yes |
 | `fertile-ground-events` | `fertile-ground-events.pages.dev` | yes |
 
-> **Known gap (2026-08-23).** `ALLOWED_ORIGINS` lists `https://michaellambgelo.github.io` for
-> `discord-embed-builder`, but that app is served from its custom domain
-> `embed-builder.michaellamb.dev`. Verified: `Origin: https://embed-builder.michaellamb.dev` →
-> **`403`, no `access-control-allow-origin`**, while allowed origins return `405`. Its ingest token
-> is set correctly and its browser RUM is still rejected — exactly the failure mode described above.
-> Fix by adding `https://embed-builder.michaellamb.dev` (and the admin origin, if it emits RUM) to
-> `ALLOWED_ORIGINS` and redeploying.
+> **Resolved 2026-08-23 — kept as a worked example.** `ALLOWED_ORIGINS` listed only
+> `https://michaellambgelo.github.io` for `discord-embed-builder`, while `public/CNAME` serves that
+> app from `embed-builder.michaellamb.dev`. Its ingest token was set correctly and its browser RUM
+> was still rejected: `Origin: https://embed-builder.michaellamb.dev` → **`403`, no
+> `access-control-allow-origin`**, where allowed origins returned `405`. The Supported Applications
+> list carried the same stale domain, which is plausibly how the allowlist came to be built on it.
+> Both are corrected, and `https://embed-builder.michaellamb.dev` is now allowlisted.
+>
+> `embed-admin.michaellamb.dev` was checked at the same time and **deliberately not added**: the
+> admin app initialises no Faro SDK, and its served bundle contains no `faro-proxy` reference. It
+> emits no RUM, so allowlisting it would widen the surface for nothing. Re-check if that changes.
+>
+> `https://michaellambgelo.github.io` is left in place but is probably now dead weight — a GitHub
+> Pages custom domain redirects the `github.io` URL, so that origin should no longer occur. Removing
+> it is a separate, verifiable change.
 
 ## Security Features
 
