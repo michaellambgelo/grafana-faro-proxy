@@ -1,0 +1,30 @@
+{
+  "findings": [
+    {
+      "category": "security",
+      "severity": "error",
+      "title": "Critical RCE/arbitrary-file-read in vitest 2.1.9 (GHSA-5xrq-8626-4rwp)",
+      "detail": "vitest <3.2.6 allows arbitrary file read and execution when the Vitest UI server is listening (CVSS 9.8, CWE-22/CWE-862). Installed version: 2.1.9 (package.json: ^2.1.0). Also transitively triggers moderate path-traversal advisories in @vitest/mocker (GHSA-82fw-gwwq-j7x9) and vite via the esbuild chain.",
+      "actionable": true,
+      "suggested_fix": "Bump vitest in package.json from ^2.1.0 to ^3.2.6 (minimum version that resolves the critical CVE); run npm install to regenerate the lockfile."
+    },
+    {
+      "category": "security",
+      "severity": "warn",
+      "title": "High-severity libheif vulnerability in sharp 0.35.2 via wrangler->miniflare (GHSA-rgj7-g3m4-5g8c)",
+      "detail": "wrangler 4.125.0 pulls in miniflare which depends on sharp 0.35.2 (<0.35.4 is affected by libheif heap-buffer-overflow CVEs). npm audit suggests downgrading wrangler to 4.15.2 as the only available fix, but that would be a counterproductive downgrade from 4.125.0. This vulnerability is scoped to wrangler's local-dev miniflare simulator and does not affect the deployed Cloudflare Worker.",
+      "actionable": false,
+      "suggested_fix": "Monitor wrangler/miniflare releases for a version that upgrades sharp to >=0.35.4; upgrade wrangler when available."
+    },
+    {
+      "category": "security",
+      "severity": "warn",
+      "title": "Moderate path-traversal advisories in vite and @vitest/mocker (fixed by vitest >=4.1.11)",
+      "detail": "vite <=6.4.2 is affected by GHSA-4w7w-66w2-5vf9 (optimised deps .map path traversal), GHSA-v6wh-96g9-6wx3 (NTLMv2 hash disclosure via UNC path on Windows), and GHSA-fx2h-pf6j-xcff (server.fs.deny bypass on Windows, CVSS 7.5). @vitest/mocker >=2.1.0 <4.1.11 carries GHSA-82fw-gwwq-j7x9. These are all resolved by upgrading vitest to >=4.1.11; the critical CVE fix (^3.2.6) is a partial fix only.",
+      "actionable": true,
+      "suggested_fix": "If the vitest ^3.2.6 bump is merged, follow up with a second bump to ^4.1.11 (or ^5.0.0) to clear the moderate vite/esbuild chain advisories."
+    }
+  ],
+  "action": "audit_only",
+  "pr_url": null
+}
