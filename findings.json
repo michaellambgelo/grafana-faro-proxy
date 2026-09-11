@@ -1,0 +1,46 @@
+{
+  "findings": [
+    {
+      "category": "security",
+      "severity": "error",
+      "title": "Critical: vitest 2.1.9 has arbitrary file read/execute vulnerability (GHSA-5xrq-8626-4rwp)",
+      "detail": "vitest@2.1.9 (devDependency, pinned in package-lock.json) is affected by GHSA-5xrq-8626-4rwp (CVSS 9.8 critical) — when the Vitest UI server is listening, arbitrary files can be read and executed. Also affected by GHSA-82fw-gwwq-j7x9 (CVSS 5.9 moderate) — path traversal / arbitrary file read via @vitest/mocker redirect mock (affects vitest 2.1.0–4.1.10). The fix requires upgrading to vitest@5.0.0 (major version bump from 2.x). Both advisories are resolved at vitest >=4.1.11; npm audit recommends 5.0.0.",
+      "actionable": true,
+      "suggested_fix": "Update package.json to 'vitest': '^5.0.0' and run npm install to regenerate package-lock.json"
+    },
+    {
+      "category": "security",
+      "severity": "warn",
+      "title": "High: wrangler 4.125.0 pulls in vulnerable sharp <0.35.4 via miniflare (GHSA-rgj7-g3m4-5g8c)",
+      "detail": "wrangler@4.125.0 (devDependency, pinned in package-lock.json via ^4.37.0) depends on miniflare@5.20260820.0-alpha which depends on sharp@0.35.2. sharp <0.35.4 is affected by GHSA-rgj7-g3m4-5g8c (high severity) — vulnerabilities in libheif (GHSA-g89c-p67h-r497 and GHSA-2jg2-4ch7-h545). wrangler@4.131.0 (latest) contains a fixed version of miniflare/sharp. The vulnerable range per npm audit is wrangler 4.16.0–4.130.0. The existing semver range ^4.37.0 already permits 4.131.0, so no package.json change is required.",
+      "actionable": true,
+      "suggested_fix": "Run 'npm install wrangler@latest' (bumps lock file from 4.125.0 to 4.131.0, within existing ^4.37.0 range) to pull in a fixed miniflare/sharp"
+    },
+    {
+      "category": "outdated_dep",
+      "severity": "warn",
+      "title": "vitest is 3 major versions behind (2.1.9 installed, 5.0.0 available)",
+      "detail": "package.json specifies 'vitest': '^2.1.0'. The latest release is 5.0.0. This is covered by the security finding above and will be resolved by updating to ^5.0.0.",
+      "actionable": true,
+      "suggested_fix": "Update package.json to 'vitest': '^5.0.0' and run npm install (same fix as security finding)"
+    },
+    {
+      "category": "failing_ci",
+      "severity": "info",
+      "title": "CI is healthy — all recent runs succeeded",
+      "detail": "Last 5 runs of 'Deploy Cloudflare Worker' on main branch all concluded with 'success' (most recent: 2026-08-24). No action required.",
+      "actionable": false,
+      "suggested_fix": ""
+    },
+    {
+      "category": "missing_tests",
+      "severity": "info",
+      "title": "No source files changed in the past 14 days — missing-test check skipped",
+      "detail": "git log --since='14 days ago' returned no changed files. No new or modified source files to evaluate for test coverage.",
+      "actionable": false,
+      "suggested_fix": ""
+    }
+  ],
+  "action": "audit_only",
+  "pr_url": null
+}
