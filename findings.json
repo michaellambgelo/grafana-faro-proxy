@@ -9,6 +9,6 @@
       "suggested_fix": "Bump wrangler from ^4.37.0 to ^4.136.3 in package.json and run npm install to update package-lock.json"
     }
   ],
-  "action": "audit_only",
-  "pr_url": null
+  "action": "pr_opened",
+  "pr_url": "https://github.com/michaellambgelo/grafana-faro-proxy/pull/10"
 }
