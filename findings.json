@@ -1,0 +1,14 @@
+{
+  "findings": [
+    {
+      "category": "security",
+      "severity": "error",
+      "title": "wrangler depends on sharp <0.35.4 (high CVE: GHSA-rgj7-g3m4-5g8c)",
+      "detail": "wrangler ^4.37.0 (installed: 4.37.0) pulls in miniflare which depends on sharp <0.35.4. sharp <0.35.4 contains heap-buffer-overflow vulnerabilities in libheif (GHSA-g89c-p67h-r497, GHSA-2jg2-4ch7-h545). The full chain is wrangler (4.16.0–4.130.0) → miniflare → sharp <0.35.4. Affected: package.json devDependencies.wrangler.",
+      "actionable": true,
+      "suggested_fix": "Bump wrangler from ^4.37.0 to ^4.136.3 in package.json and run npm install to update package-lock.json"
+    }
+  ],
+  "action": "pr_opened",
+  "pr_url": "https://github.com/michaellambgelo/grafana-faro-proxy/pull/10"
+}
