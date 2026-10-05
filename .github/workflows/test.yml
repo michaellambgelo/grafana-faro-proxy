@@ -1,0 +1,28 @@
+name: Test
+
+# Tests only. Deploys belong to Cloudflare Workers Builds (the repo is connected
+# in the dashboard): "Deploy default branch" runs `npm test` then `wrangler
+# deploy` on main, and "Deploy non-production branches" runs `npm test` then
+# `wrangler versions upload` for every other branch. This workflow used to
+# deploy too, so every push to main deployed twice; on 2026-10-05 a GitHub
+# Actions outage left it queued and red while Workers Builds had already shipped.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test

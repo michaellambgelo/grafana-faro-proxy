@@ -221,19 +221,22 @@ This worker is designed to be deployed on Cloudflare Workers. Follow these steps
 4. Deploy the worker
 5. Set up a route in your Cloudflare dashboard to direct traffic to this worker
 
-### GitHub Actions Deployment
+### Deployment (Cloudflare Workers Builds)
 
-This repository includes a GitHub Actions workflow for automatic deployment. To set it up:
+The repository is connected to Cloudflare **Workers Builds**, which owns every deploy:
 
-1. In your GitHub repository, go to Settings > Secrets and variables > Actions
-2. Add the following secrets:
-   - `CF_API_TOKEN`: Your Cloudflare API token with Workers deployment permissions
-   - `BLOG_INGEST_TOKEN`: Your Grafana Faro ingest token for the blog application
-   - `LETTERBOXD_INGEST_TOKEN`: Your Grafana Faro ingest token for the letterboxd viewer
+| Trigger | Branches | Build command | Deploy command |
+|---|---|---|---|
+| Deploy default branch | `main` | `npm test` | `npx wrangler deploy` |
+| Deploy non-production branches | everything else | `npm test` | `npx wrangler versions upload` |
 
-3. Push to the main branch or manually trigger the workflow to deploy
+A failing test fails the build, so nothing ships without passing tests. GitHub Actions
+(`.github/workflows/test.yml`) runs the same tests as a PR check and never deploys — it
+used to, which made every push to `main` deploy twice.
 
-The workflow will automatically deploy your worker to Cloudflare using the environment variables and secrets configured in GitHub.
+Ingest tokens are Worker secrets (`npx wrangler secret put <NAME>_INGEST_TOKEN`), not
+GitHub secrets. The `CF_API_TOKEN` / `CF_ACCOUNT_ID` repo secrets were only used by the
+old deploy job and can be deleted.
 
 # Setting Up Local Development for Grafana Faro Proxy
 
