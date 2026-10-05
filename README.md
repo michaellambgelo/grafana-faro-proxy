@@ -44,6 +44,7 @@ The worker acts as a middleware between your web applications and Grafana Cloud:
 | `EMBED_BUILDER_SLASH_INGEST_TOKEN` | `discord-embed-builder-slash` (server-to-server) |
 | `BOXD_CARD_INGEST_TOKEN` | `boxd-card` |
 | `FERTILE_GROUND_EVENTS_INGEST_TOKEN` | `fertile-ground-events` |
+| `FERTILE_GROUND_TRIVIA_INGEST_TOKEN` | `fertile-ground-trivia` |
 
 ### Adding a new app
 
@@ -63,6 +64,7 @@ The worker acts as a middleware between your web applications and Grafana Cloud:
 - `discord-embed-builder-slash` — server-to-server telemetry from the embed-builder Worker (`X-Server-Token` bypass; not a separate Faro app)
 - `boxd-card` — `boxd-card.com` / `boxd-card.michaellamb.dev` (hero + web app; segmented by `surface` event attribute)
 - `fertile-ground-events` — `fertile-ground-events.pages.dev` (trivia-scorer SPA; admin + public segmented by `surface` session attribute)
+- `fertile-ground-trivia` — `fertile-ground-trivia.pages.dev` (trivia presentation deck; product events come from the signed-in archive features)
 
 ## Architecture: why this proxy exists
 
@@ -126,6 +128,7 @@ Every row here must match the app's real serving origin, not where it used to li
 | `discord-embed-builder` | `embed-builder.michaellamb.dev` (see `public/CNAME`) | yes |
 | `boxd-card` | `boxd-card.com`, `boxd-card.michaellamb.dev` | yes |
 | `fertile-ground-events` | `fertile-ground-events.pages.dev` | yes |
+| `fertile-ground-trivia` | `fertile-ground-trivia.pages.dev` | yes |
 
 > **Resolved 2026-08-23 — kept as a worked example.** `ALLOWED_ORIGINS` listed only
 > `https://michaellambgelo.github.io` for `discord-embed-builder`, while `public/CNAME` serves that

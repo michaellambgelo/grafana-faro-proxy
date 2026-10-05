@@ -132,6 +132,7 @@ describe('TOKEN_ENV_BY_APP registry', () => {
     expect(TOKEN_ENV_BY_APP).toHaveProperty('landing');
     expect(TOKEN_ENV_BY_APP).toHaveProperty('discord-embed-builder');
     expect(TOKEN_ENV_BY_APP).toHaveProperty('discord-embed-builder-slash');
+    expect(TOKEN_ENV_BY_APP).toHaveProperty('fertile-ground-trivia');
   });
 
   it('maps each app to an *_INGEST_TOKEN env var', () => {

@@ -25,6 +25,9 @@ const TOKEN_ENV_BY_APP = {
   // Admin console and public leaderboard/archive are segmented downstream
   // via the `surface` session attribute (admin | public).
   'fertile-ground-events': 'FERTILE_GROUND_EVENTS_INGEST_TOKEN',
+  // Browser RUM for the fertile-ground-trivia presentation deck. Only the
+  // signed-in admin features (repeat check, archive sync) emit product events.
+  'fertile-ground-trivia': 'FERTILE_GROUND_TRIVIA_INGEST_TOKEN',
 };
 
 const SERVER_TOKEN_HEADER = 'X-Server-Token';
