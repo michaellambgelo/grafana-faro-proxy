@@ -36,6 +36,8 @@ custom_domain = true
 # - BOXD_CARD_INGEST_TOKEN — boxd-card hero + web app browser RUM
 # - FERTILE_GROUND_EVENTS_INGEST_TOKEN — trivia-scorer SPA browser RUM
 #   (admin + public, segmented via the `surface` session attribute)
+# - FERTILE_GROUND_TRIVIA_INGEST_TOKEN — fertile-ground-trivia presentation
+#   deck browser RUM
 #
 # Server-to-server bypass:
 # - SERVER_SHARED_SECRET — shared secret matched against the X-Server-Token
