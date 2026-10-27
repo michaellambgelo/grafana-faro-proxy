@@ -60,7 +60,7 @@ The worker acts as a middleware between your web applications and Grafana Cloud:
 - `blog` — `blog.michaellamb.dev` (Jekyll)
 - `letterboxd-viewer` — `letterboxd.michaellamb.dev` (static dashboard)
 - `landing` — `michaellamb.dev` (landing page)
-- `discord-embed-builder` — `embed-builder.michaellamb.dev` (Discord embed builder, browser RUM; **its origin is not yet in `ALLOWED_ORIGINS`** — see Architecture)
+- `discord-embed-builder` — `embed-builder.michaellamb.dev` (Discord embed builder, browser RUM)
 - `discord-embed-builder-slash` — server-to-server telemetry from the embed-builder Worker (`X-Server-Token` bypass; not a separate Faro app)
 - `boxd-card` — `boxd-card.com` / `boxd-card.michaellamb.dev` (hero + web app; segmented by `surface` event attribute)
 - `fertile-ground-events` — `fertile-ground-events.pages.dev` (trivia-scorer SPA; admin + public segmented by `surface` session attribute)
