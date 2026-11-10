@@ -266,6 +266,20 @@ describe('handleRequest (integration)', () => {
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://blog.michaellamb.dev');
   });
 
+  it('allows every header the Faro fetch transport sends', async () => {
+    const res = await handleRequest(
+      req('/faro-proxy', {
+        method: 'OPTIONS',
+        headers: { Origin: 'https://blog.michaellamb.dev' },
+      }),
+      makeEnv()
+    );
+    const allowed = res.headers.get('Access-Control-Allow-Headers').toLowerCase().split(/,\s*/);
+    for (const h of ['content-type', 'x-faro-session-id', 'idempotency-key']) {
+      expect(allowed).toContain(h);
+    }
+  });
+
   it('forwards to the collector on success', async () => {
     fetchSpy.mockResolvedValueOnce(new Response('ok', { status: 200 }));
     const res = await handleRequest(

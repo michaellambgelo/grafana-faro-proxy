@@ -33,7 +33,9 @@ const TOKEN_ENV_BY_APP = {
 const SERVER_TOKEN_HEADER = 'X-Server-Token';
 
 const CORS_METHODS = 'GET, POST, PUT, DELETE, OPTIONS';
-const CORS_ALLOW_HEADERS = 'Content-Type, Authorization, X-Requested-With, x-faro-session-id';
+// Faro Web SDK >= 2.13 adds an `Idempotency-Key` header to every fetch-transport
+// POST; without it in the preflight allowlist the browser blocks all telemetry.
+const CORS_ALLOW_HEADERS = 'Content-Type, Authorization, X-Requested-With, x-faro-session-id, Idempotency-Key';
 
 const BOT_USER_AGENTS = [
   'bot', 'crawler', 'spider', 'scraper', 'facebookexternalhit',
